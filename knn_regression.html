@@ -111,30 +111,29 @@
     
     <div class="theory-card">
       <h3>1. แนวคิดพื้นฐาน (Core Concept)</h3>
-      <p>KNN Regression คืออัลกอริทึมสำหรับทำนาย <b>ค่าตัวเลขต่อเนื่อง (Continuous Value)</b> ต่างจาก Classification ที่ทำนายคลาส โดยอาศัยสมมติฐานว่า ข้อมูลที่มีอินพุต (X) ใกล้เคียงกัน ควรจะมีเอาต์พุต (Y) ใกล้เคียงกันด้วย</p>
+      <p>KNN Regression ใช้สำหรับทำนายตัวเลขแบบต่อเนื่อง (Continuous Value) โดยอ้างอิงสมมติฐานว่า ข้อมูลที่มีฟีเจอร์คล้ายกัน (อยู่ใกล้กัน) ควรจะมีค่าคำตอบ y ที่ใกล้เคียงกันด้วย</p>
     </div>
 
     <div class="theory-card">
-      <h3>2. การคำนวณระยะห่าง (Distance Metric)</h3>
-      <p>คำนวณหาระยะห่างระหว่างจุด Query กับจุดข้อมูลเดิม หากมีฟีเจอร์เดียว (1D) จะใช้ระยะห่างสัมบูรณ์:</p>
-      <div class="formula-box">d(x, x<sub>i</sub>) = |x<sub>query</sub> - x<sub>i</sub>|</div>
-      <p>หากมีหลายฟีเจอร์ (Multi-D) จะใช้ Euclidean Distance รวมทุกแกนคุณลักษณะ</p>
+      <h3>2. การคำนวณค่าทำนาย (Average Calculation)</h3>
+      <p><b>• แบบปกติ (Unweighted Average):</b> หาค่าเฉลี่ยตรงๆ จาก K จุดที่ใกล้ที่สุด</p>
+      <div class="formula-box">ŷ = (1 / K) × ∑ y<sub>i</sub></div>
+      <p><b>• แบบถ่วงน้ำหนัก (Weighted Average):</b> ให้จุดที่อยู่ใกล้กว่ามีอิทธิพลต่อค่าทำนายมากกว่าจุดที่ไม่อยู่ไกล โดยกำหนดน้ำหนัก w<sub>i</sub> = 1 / d<sub>i</sub></p>
+      <div class="formula-box">ŷ = (∑ w<sub>i</sub> y<sub>i</sub>) / ∑ w<sub>i</sub></div>
     </div>
 
     <div class="theory-card">
-      <h3>3. สูตรทำนายผลลัพธ์ (Prediction Formula)</h3>
-      <p>คำนวณค่าทำนาย ŷ โดยนำค่า y ของเพื่อนบ้านที่ใกล้ที่สุด K จุดมาหา <b>ค่าเฉลี่ย (Mean)</b>:</p>
-      <div class="formula-box">ŷ = (1 / K) * ∑<sub>i=1..K</sub> y<sub>i</sub></div>
-      <p><i>เพิ่มเติม:</i> สามารถใช้ Weighted Average โดยถ่วงน้ำหนักตามส่วนกลับของระยะห่าง (1/d) ได้ด้วย</p>
-    </div>
-
-    <div class="theory-card">
-      <h3>4. ข้อแตกต่างหลักจาก KNN Classification</h3>
+      <h3>3. ผลกระทบของการเลือกค่า K (Bias-Variance Tradeoff)</h3>
       <ul>
-        <li><b>Classification:</b> ตัดสินคำตอบด้วยการโหวตเสียงข้างมาก (Majority Vote)</li>
-        <li><b>Regression:</b> ตัดสินคำตอบด้วยการหาค่าเฉลี่ยเชิงตัวเลข (Average / Weighted Mean)</li>
-        <li><b>การเลือกค่า K:</b> K น้อยเสี่ยง Overfitting กราฟขรุขระ, K มากเสี่ยง Underfitting กราฟเรียบเกินไป</li>
+        <li><b>K น้อย (เช่น K=1):</b> เส้นความสัมพันธ์จะขรุขระตามจุดข้อมูล (High Variance) ไวต่อ Outliers เกิด Overfitting ได้ง่าย</li>
+        <li><b>K มาก:</b> เส้นความสัมพันธ์จะเรียบขึ้น (High Bias) แต่หากมากเกินไป ค่าทำนายจะถูกดึงเข้าหาค่าเฉลี่ยของข้อมูลทั้งหมด (Underfitting)</li>
       </ul>
+    </div>
+
+    <div class="theory-card">
+      <h3>4. ข้อดีและข้อจำกัด (Pros & Cons)</h3>
+      <p><b>ข้อดี:</b> เป็น Non-parametric Model ไม่ต้องสมมติรูปแบบเส้นตรงล่วงหน้า รับมือกับความสัมพันธ์ซับซ้อนได้ดี</p>
+      <p><b>ข้อจำกัด:</b> ไม่สามารถทำนายค่านอกขอบเขตข้อมูลที่มีอยู่ได้ (Extrapolation Fail) และคำนวณช้าเมื่อมีข้อมูลขนาดใหญ่</p>
     </div>
 
   </div>
