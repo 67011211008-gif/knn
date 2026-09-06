@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>KNN Classification - Interactive Visualization</title>
+<style>
+  :root {
+    --navy: #21295C;
+    --deepblue: #065A82;
+    --teal: #1C7293;
+    --mint: #5FBDB0;
+    --bg: #F4F8FA;
+    --card: #FFFFFF;
+    --text: #1E2761;
+    --muted: #6B7A8F;
+    --fruit: #E85D5D;
+    --veg: #45A876;
+    --protein: #4C86C7;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin: 0; padding: 28px 32px;
+    background: var(--bg); color: var(--text);
+  }
+  h1 { font-size: 24px; margin: 0 0 4px 0; color: var(--navy); }
+  p.subtitle { color: var(--muted); margin: 0 0 22px 0; font-size: 14.5px; }
+  .layout { display: grid; grid-template-columns: 640px 1fr; gap: 22px; align-items: start; }
+  .panel {
+    background: var(--card); border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 1px 6px rgba(20,30,60,0.08);
+  }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .controls label { font-size: 13.5px; font-weight: 600; color: var(--deepblue); }
+  input[type=range] { width: 140px; vertical-align: middle; }
+  .btn {
+    background: var(--teal); color: white; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--deepblue); }
+  .btn.secondary { background: var(--muted); }
+  .btn.secondary:hover { background: #55606f; }
+  .btn:disabled { background: #C6D0DC; cursor: not-allowed; }
+  svg { border-radius: 10px; background: #FBFDFE; border: 1px solid var(--border); cursor: crosshair; }
+  .legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12.5px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .step-title { font-size: 13px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .step-desc { font-size: 14.5px; line-height: 1.55; min-height: 62px; }
+  .step-nav { display: flex; gap: 8px; margin-top: 12px; }
+  .stepper { display: flex; gap: 6px; margin: 14px 0; }
+  .stepper .seg { flex: 1; height: 6px; border-radius: 4px; background: var(--border); transition: background 0.2s; }
+  .stepper .seg.active { background: var(--teal); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--deepblue); font-weight: 700; background: #EEF4F8; }
+  tr.knn-row { background: #FFF6E0; }
+  tr.knn-row td:first-child { font-weight: 700; }
+
+  .result-box {
+    margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+    background: var(--navy); color: white; display: none;
+  }
+  .result-box.show { display: block; }
+  .result-box .pred { font-size: 20px; font-weight: 800; }
+  .vote-bars { display: flex; gap: 8px; margin-top: 8px; }
+  .vote-bar { flex: 1; text-align: center; font-size: 11.5px; }
+  .vote-bar .bar { height: 10px; border-radius: 5px; margin-bottom: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+  .vote-bar .fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
+</style>
+</head>
+<body>
+
+<h1>K-Nearest Neighbor (KNN) — Classification</h1>
+<p class="subtitle">คลิกบนกราฟเพื่อวางจุดข้อมูลใหม่ (Query Point) แล้วดูว่าอัลกอริทึม KNN ตัดสินใจจำแนกประเภทอย่างไร</p>
+
+<div class="layout">
+  <!-- LEFT: Canvas -->
+  <div class="panel">
+    <div class="controls">
+      <label>K = <span id="kValue">3</span></label>
+      <input type="range" id="kSlider" min="1" max="9" step="2" value="3">
+      <button class="btn" id="randomBtn">สุ่มจุด Query</button>
+      <button class="btn secondary" id="resetBtn">รีเซ็ต</button>
+    </div>
+    <svg id="chart" viewBox="0 0 635 470" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--fruit)"></span>ผลไม้ (Fruit)</span>
+      <span><span class="dot" style="background:var(--veg)"></span>ผัก (Vegetable)</span>
+      <span><span class="dot" style="background:var(--protein)"></span>โปรตีน (Protein)</span>
+      <span><span class="dot" style="background:#FFB020;border:2px solid #333"></span>Query Point</span>
+    </div>
+    <div class="hint">แกน X = ความหวาน (Sweetness) 0-10 &nbsp;|&nbsp; แกน Y = ความกรอบ (Crunchiness) 0-10</div>
+  </div>
+
+  <!-- RIGHT: Explanation -->
+  <div class="panel">
+    <div class="step-title">ขั้นตอนการทำงานของ KNN</div>
+    <div class="stepper">
+      <div class="seg active" id="seg0"></div>
+      <div class="seg" id="seg1"></div>
+      <div class="seg" id="seg2"></div>
+      <div class="seg" id="seg3"></div>
+    </div>
+    <div class="step-desc" id="stepDesc">
+      <b>ขั้นที่ 1: วางจุดข้อมูลใหม่ (Query Point)</b><br>
+      คลิกบนกราฟด้านซ้ายเพื่อวางจุดข้อมูลที่ยังไม่ทราบประเภท (แสดงเป็นจุดสีส้ม) ระบบจะเริ่มคำนวณระยะห่างจากจุดนี้ไปยังข้อมูลทุกจุดที่มีอยู่แล้ว
+    </div>
+    <div class="step-nav">
+      <button class="btn" id="nextBtn">ขั้นถัดไป →</button>
+      <button class="btn secondary" id="prevBtn" disabled>← ย้อนกลับ</button>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <div style="font-size:12px;opacity:0.8;">ผลการทำนาย (Prediction)</div>
+      <div class="pred" id="predText">-</div>
+      <div class="vote-bars" id="voteBars"></div>
+    </div>
+
+    <table id="distTable" style="display:none;">
+      <thead><tr><th>#</th><th>จุดข้อมูล</th><th>ประเภท</th><th>ระยะห่าง</th></tr></thead>
+      <tbody id="distTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Data: sweetness(0-10), crunchiness(0-10), class
+// ============================================================
+const CLASS_COLOR = { fruit: '#E85D5D', veg: '#45A876', protein: '#4C86C7' };
+const CLASS_NAME = { fruit: 'ผลไม้', veg: 'ผัก', protein: 'โปรตีน' };
+
+const dataset = [
+  {x:8.2,y:2.5,c:'fruit'}, {x:8.8,y:3.4,c:'fruit'}, {x:7.5,y:1.8,c:'fruit'},
+  {x:9.1,y:3.0,c:'fruit'}, {x:7.9,y:3.8,c:'fruit'}, {x:8.4,y:1.5,c:'fruit'}, {x:7.2,y:2.9,c:'fruit'},
+  {x:2.3,y:8.1,c:'veg'}, {x:3.1,y:7.5,c:'veg'}, {x:1.8,y:8.8,c:'veg'},
+  {x:2.9,y:9.0,c:'veg'}, {x:3.6,y:8.3,c:'veg'}, {x:2.0,y:7.2,c:'veg'}, {x:3.3,y:7.9,c:'veg'},
+  {x:2.5,y:2.8,c:'protein'}, {x:3.2,y:1.9,c:'protein'}, {x:1.9,y:3.4,c:'protein'},
+  {x:3.6,y:2.5,c:'protein'}, {x:2.1,y:1.6,c:'protein'}, {x:2.8,y:3.7,c:'protein'}, {x:1.6,y:2.2,c:'protein'},
+];
+
+// ============================================================
+// SVG plot setup
+// ============================================================
+const svg = document.getElementById('chart');
+const NS = 'http://www.w3.org/2000/svg';
+const marginLeft = 55, marginTop = 20, marginBottom = 45, plotW = 560, plotH = 400;
+
+function xScale(v) { return marginLeft + (v/10)*plotW; }
+function yScale(v) { return marginTop + plotH - (v/10)*plotH; }
+
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function drawAxes() {
+  for (let i=0;i<=10;i+=2) {
+    svg.appendChild(el('line',{x1:xScale(i),y1:marginTop,x2:xScale(i),y2:marginTop+plotH,stroke:'#EEF2F6','stroke-width':1}));
+    svg.appendChild(el('line',{x1:marginLeft,y1:yScale(i),x2:marginLeft+plotW,y2:yScale(i),stroke:'#EEF2F6','stroke-width':1}));
+    const tx = el('text',{x:xScale(i),y:marginTop+plotH+18,'font-size':11,fill:'#6B7A8F','text-anchor':'middle'}); tx.textContent = i;
+    svg.appendChild(tx);
+    const ty = el('text',{x:marginLeft-10,y:yScale(i)+4,'font-size':11,fill:'#6B7A8F','text-anchor':'end'}); ty.textContent = i;
+    svg.appendChild(ty);
+  }
+  svg.appendChild(el('rect',{x:marginLeft,y:marginTop,width:plotW,height:plotH,fill:'none',stroke:'#C6D0DC'}));
+  const xl = el('text',{x:marginLeft+plotW/2,y:marginTop+plotH+38,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600}); xl.textContent='ความหวาน (Sweetness)';
+  svg.appendChild(xl);
+  const yl = el('text',{x:15,y:marginTop+plotH/2,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600, transform:`rotate(-90 15 ${marginTop+plotH/2})`}); yl.textContent='ความกรอบ (Crunchiness)';
+  svg.appendChild(yl);
+}
+
+let dynamicLayer;
+function drawPoints() {
+  dataset.forEach((d,i) => {
+    const c = el('circle', {cx:xScale(d.x), cy:yScale(d.y), r:7, fill:CLASS_COLOR[d.c], stroke:'white', 'stroke-width':1.5, 'data-idx':i});
+    svg.appendChild(c);
+  });
+  dynamicLayer = el('g', {id:'dynamicLayer'});
+  svg.appendChild(dynamicLayer);
+}
+
+drawAxes();
+drawPoints();
+
+// ============================================================
+// State
+// ============================================================
+let query = null;
+let K = 3;
+let step = 0; // 0..3
+
+function dist(a,b) { return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y-b.y,2)); }
+
+function computeNeighbors() {
+  if (!query) return [];
+  return dataset.map(function(d,i) {
+    return { x:d.x, y:d.y, c:d.c, idx:i, d: dist(query,d) };
+  }).sort(function(a,b){ return a.d-b.d; });
+}
+
+function render() {
+  dynamicLayer.innerHTML = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#chart circle[data-idx]'), function(c) {
+    c.setAttribute('r', 7);
+    c.setAttribute('opacity', 1);
+  });
+
+  document.getElementById('kValue').textContent = K;
+
+  if (!query) {
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('distTable').style.display = 'none';
+    return;
+  }
+
+  const neighbors = computeNeighbors();
+  const topK = neighbors.slice(0, K);
+
+  // draw query point
+  dynamicLayer.appendChild(el('circle', {cx:xScale(query.x), cy:yScale(query.y), r:9, fill:'#FFB020', stroke:'#333', 'stroke-width':2}));
+
+  if (step >= 1) {
+    // step 1: show distance lines to all points (thin, faded)
+    neighbors.forEach(n => {
+      dynamicLayer.appendChild(el('line', {
+        x1:xScale(query.x), y1:yScale(query.y), x2:xScale(n.x), y2:yScale(n.y),
+        stroke:'#C6D0DC', 'stroke-width':1, 'stroke-dasharray':'2,2'
+      }));
+    });
+  }
+
+  if (step >= 2) {
+    // step 2: highlight K nearest with circle boundary + solid lines
+    const kthDist = topK[topK.length-1].d;
+    dynamicLayer.appendChild(el('circle', {
+      cx:xScale(query.x), cy:yScale(query.y), r: kthDist*(plotW/10),
+      fill:'rgba(28,114,147,0.07)', stroke:'#1C7293', 'stroke-width':1.5, 'stroke-dasharray':'5,3'
+    }));
+    topK.forEach(n => {
+      dynamicLayer.appendChild(el('line', {
+        x1:xScale(query.x), y1:yScale(query.y), x2:xScale(n.x), y2:yScale(n.y),
+        stroke:'#1C7293', 'stroke-width':2
+      }));
+      const c = document.querySelector(`#chart circle[data-idx="${n.idx}"]`);
+      if (c) { c.setAttribute('r', 10); c.setAttribute('stroke', '#333'); c.setAttribute('stroke-width', 2.5); }
+    });
+
+    // distance table
+    document.getElementById('distTable').style.display = 'table';
+    const tbody = document.getElementById('distTableBody');
+    tbody.innerHTML = '';
+    neighbors.slice(0, 8).forEach((n, i) => {
+      const tr = document.createElement('tr');
+      if (i < K) tr.className = 'knn-row';
+      tr.innerHTML = `<td>${i+1}</td><td>(${n.x.toFixed(1)}, ${n.y.toFixed(1)})</td><td>${CLASS_NAME[n.c]}</td><td>${n.d.toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  if (step >= 3) {
+    // step 3: majority vote
+    const counts = {fruit:0, veg:0, protein:0};
+    topK.forEach(n => counts[n.c]++);
+    const pred = Object.keys(counts).reduce((a,b) => counts[a] >= counts[b] ? a : b);
+
+    document.getElementById('resultBox').classList.add('show');
+    document.getElementById('predText').textContent = CLASS_NAME[pred] + ` (${counts[pred]}/${K} เสียง)`;
+    document.getElementById('predText').style.color = CLASS_COLOR[pred];
+
+    const voteBars = document.getElementById('voteBars');
+    voteBars.innerHTML = '';
+    Object.keys(counts).forEach(cls => {
+      const pct = (counts[cls]/K*100).toFixed(0);
+      voteBars.innerHTML += `<div class="vote-bar">
+        <div class="bar"><div class="fill" style="width:${pct}%;background:${CLASS_COLOR[cls]}"></div></div>
+        ${CLASS_NAME[cls]}: ${counts[cls]}
+      </div>`;
+    });
+
+    // color query point with predicted class outline
+    dynamicLayer.appendChild(el('circle', {cx:xScale(query.x), cy:yScale(query.y), r:13, fill:'none', stroke:CLASS_COLOR[pred], 'stroke-width':3}));
+  }
+}
+
+const STEP_TEXT = [
+  `<b>ขั้นที่ 1: วางจุดข้อมูลใหม่ (Query Point)</b><br>คลิกบนกราฟด้านซ้ายเพื่อวางจุดข้อมูลที่ยังไม่ทราบประเภท (แสดงเป็นจุดสีส้ม) ระบบจะเริ่มคำนวณระยะห่างจากจุดนี้ไปยังข้อมูลทุกจุดที่มีอยู่แล้ว`,
+  `<b>ขั้นที่ 2: คำนวณระยะห่าง (Distance)</b><br>คำนวณระยะห่างแบบ Euclidean Distance จากจุด Query ไปยังทุกจุดข้อมูล ด้วยสูตร d = √((x₁-x₂)² + (y₁-y₂)²) เส้นประแสดงระยะห่างไปยังทุกจุด`,
+  `<b>ขั้นที่ 3: เลือก K จุดที่ใกล้ที่สุด</b><br>เรียงลำดับระยะห่างจากน้อยไปมาก แล้วเลือก K จุดที่ใกล้ Query มากที่สุด (วงกลมประแสดงขอบเขตของ K จุดที่ใกล้สุด) ดูตารางด้านล่างประกอบ`,
+  `<b>ขั้นที่ 4: โหวตเสียงข้างมาก (Majority Vote)</b><br>นับจำนวนประเภทของ K จุดที่ใกล้ที่สุด ประเภทที่มีคะแนนโหวตมากที่สุดคือคำตอบการทำนาย (Prediction) ของจุด Query นี้`,
+];
+
+function updateStepUI() {
+  document.getElementById('stepDesc').innerHTML = STEP_TEXT[step];
+  for (let i=0;i<4;i++) document.getElementById('seg'+i).classList.toggle('active', i<=step);
+  document.getElementById('prevBtn').disabled = step === 0;
+  document.getElementById('nextBtn').disabled = step === 3 || !query;
+  document.getElementById('nextBtn').textContent = step === 3 ? 'เสร็จสิ้น ✓' : 'ขั้นถัดไป →';
+}
+
+svg.addEventListener('click', (e) => {
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 635/rect.width, scaleY = 470/rect.height;
+  const px = (e.clientX - rect.left)*scaleX, py = (e.clientY - rect.top)*scaleY;
+  if (px < marginLeft || px > marginLeft+plotW || py < marginTop || py > marginTop+plotH) return;
+  const x = ((px-marginLeft)/plotW)*10;
+  const y = 10 - ((py-marginTop)/plotH)*10;
+  query = {x, y};
+  step = 0;
+  updateStepUI();
+  render();
+});
+
+document.getElementById('kSlider').addEventListener('input', (e) => {
+  K = parseInt(e.target.value);
+  render();
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (step < 3) { step++; updateStepUI(); render(); }
+});
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (step > 0) { step--; updateStepUI(); render(); }
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  query = null; step = 0; updateStepUI(); render();
+});
+document.getElementById('randomBtn').addEventListener('click', () => {
+  query = {x: Math.random()*10, y: Math.random()*10};
+  step = 0; updateStepUI(); render();
+});
+
+// initial demo state
+query = {x: 5.0, y: 5.0};
+step = 0;
+updateStepUI();
+render();
+</script>
+</body>
+</html>

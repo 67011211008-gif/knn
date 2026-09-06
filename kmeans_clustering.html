@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>K-Means Clustering - Interactive Visualization</title>
+<style>
+  :root {
+    --navy: #21295C; --deepblue: #065A82; --teal: #1C7293; --mint: #5FBDB0;
+    --bg: #F4F8FA; --card: #FFFFFF; --text: #1E2761; --muted: #6B7A8F; --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,sans-serif; margin:0; padding:28px 32px; background:var(--bg); color:var(--text); }
+  h1 { font-size:24px; margin:0 0 4px 0; color:var(--navy); }
+  p.subtitle { color:var(--muted); margin:0 0 22px 0; font-size:14.5px; }
+  .layout { display:grid; grid-template-columns:640px 1fr; gap:22px; align-items:start; }
+  .panel { background:var(--card); border-radius:14px; padding:18px 20px; box-shadow:0 1px 6px rgba(20,30,60,0.08); }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:12px; }
+  .controls label { font-size:13.5px; font-weight:600; color:var(--deepblue); }
+  select { padding:5px 8px; border-radius:6px; border:1px solid var(--border); font-size:13px; }
+  .btn { background:var(--teal); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .btn:hover { background:var(--deepblue); }
+  .btn.secondary { background:var(--muted); }
+  .btn.secondary:hover { background:#55606f; }
+  .btn:disabled { background:#C6D0DC; cursor:not-allowed; }
+  svg { border-radius:10px; background:#FBFDFE; border:1px solid var(--border); }
+  .legend { display:flex; gap:16px; margin-top:10px; font-size:12.5px; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+  .step-title { font-size:13px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .step-desc { font-size:14.5px; line-height:1.55; min-height:80px; }
+  .step-nav { display:flex; gap:8px; margin-top:12px; flex-wrap: wrap; }
+  .iter-badge {
+    display:inline-block; background:var(--navy); color:white; font-size:12.5px; font-weight:700;
+    padding:4px 12px; border-radius:20px; margin-bottom:10px;
+  }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
+  th { color:var(--deepblue); font-weight:700; background:#EEF4F8; }
+  .converged-box {
+    margin-top:14px; padding:12px 16px; border-radius:10px; background:#E8F7F1; color:#1D6B4E;
+    font-size:13.5px; font-weight:700; display:none; border:1px solid #B8E6D0;
+  }
+  .converged-box.show { display:block; }
+</style>
+</head>
+<body>
+
+<h1>K-Means Clustering</h1>
+<p class="subtitle">อัลกอริทึมจัดกลุ่มข้อมูลแบบไม่มีผู้สอน (Unsupervised) — กด "เริ่มต้น" แล้วกด "ขั้นถัดไป" เพื่อดูการวนซ้ำทีละรอบ</p>
+
+<div class="layout">
+  <div class="panel">
+    <div class="controls">
+      <label>K (จำนวนกลุ่ม) =</label>
+      <select id="kSelect">
+        <option value="2">2</option>
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+      </select>
+      <button class="btn" id="initBtn">เริ่มต้น (สุ่ม Centroid)</button>
+      <button class="btn secondary" id="resetBtn">รีเซ็ต</button>
+    </div>
+    <svg id="chart" viewBox="0 0 635 470" width="100%" height="460"></svg>
+    <div class="legend" id="legendBox"></div>
+    <div class="hint">จุดวงกลมเล็ก = ข้อมูล &nbsp;|&nbsp; รูปดาว = Centroid (จุดศูนย์กลางของแต่ละกลุ่ม)</div>
+  </div>
+
+  <div class="panel">
+    <div class="iter-badge" id="iterBadge">ยังไม่เริ่มต้น</div>
+    <div class="step-title">ขั้นตอนการทำงานของ K-Means</div>
+    <div class="step-desc" id="stepDesc">
+      <b>เริ่มต้นอัลกอริทึม</b><br>กดปุ่ม "เริ่มต้น (สุ่ม Centroid)" เพื่อสุ่มตำแหน่งจุดศูนย์กลาง (Centroid) เริ่มต้นจำนวน K จุดบนกราฟ
+    </div>
+    <div class="step-nav">
+      <button class="btn" id="nextBtn" disabled>ขั้นถัดไป →</button>
+    </div>
+    <div class="converged-box" id="convergedBox">✓ Centroid หยุดเคลื่อนที่แล้ว — อัลกอริทึมลู่เข้าสู่คำตอบ (Converged)</div>
+
+    <table id="centroidTable" style="display:none;">
+      <thead><tr><th>Centroid</th><th>ตำแหน่ง (x, y)</th><th>จำนวนสมาชิก</th></tr></thead>
+      <tbody id="centroidTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const CLUSTER_COLORS = ['#E85D5D', '#45A876', '#4C86C7', '#C79B4C'];
+
+// 2D dataset - roughly 3-4 natural clusters
+const dataset = [
+  {x:2.0,y:2.5},{x:2.5,y:1.8},{x:1.6,y:3.0},{x:3.0,y:2.2},{x:2.2,y:1.5},{x:1.8,y:2.8},{x:2.8,y:3.1},
+  {x:8.0,y:2.0},{x:8.5,y:1.5},{x:7.6,y:2.6},{x:8.8,y:2.4},{x:7.9,y:1.6},{x:8.3,y:2.9},{x:7.5,y:1.9},
+  {x:5.0,y:8.0},{x:5.5,y:8.5},{x:4.6,y:7.6},{x:5.8,y:7.8},{x:4.9,y:8.8},{x:5.3,y:7.3},{x:4.5,y:8.3},
+  {x:8.5,y:7.5},{x:9.0,y:8.0},{x:8.2,y:8.4},{x:9.2,y:7.3},{x:8.7,y:8.7},
+];
+
+const svg = document.getElementById('chart');
+const NS = 'http://www.w3.org/2000/svg';
+const marginLeft=55, marginTop=20, marginBottom=45, plotW=560, plotH=400;
+const xMin=0,xMax=10,yMin=0,yMax=10;
+
+function xScale(v){ return marginLeft + ((v-xMin)/(xMax-xMin))*plotW; }
+function yScale(v){ return marginTop + plotH - ((v-yMin)/(yMax-yMin))*plotH; }
+
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function drawAxes(){
+  for (let i=0;i<=10;i+=2){
+    svg.appendChild(el('line',{x1:xScale(i),y1:marginTop,x2:xScale(i),y2:marginTop+plotH,stroke:'#EEF2F6','stroke-width':1}));
+    svg.appendChild(el('line',{x1:marginLeft,y1:yScale(i),x2:marginLeft+plotW,y2:yScale(i),stroke:'#EEF2F6','stroke-width':1}));
+    const tx=el('text',{x:xScale(i),y:marginTop+plotH+18,'font-size':11,fill:'#6B7A8F','text-anchor':'middle'}); tx.textContent=i;
+    svg.appendChild(tx);
+    const ty=el('text',{x:marginLeft-10,y:yScale(i)+4,'font-size':11,fill:'#6B7A8F','text-anchor':'end'}); ty.textContent=i;
+    svg.appendChild(ty);
+  }
+  svg.appendChild(el('rect',{x:marginLeft,y:marginTop,width:plotW,height:plotH,fill:'none',stroke:'#C6D0DC'}));
+}
+drawAxes();
+
+let pointLayer = el('g',{id:'pointLayer'});
+let centroidLayer = el('g',{id:'centroidLayer'});
+svg.appendChild(pointLayer);
+svg.appendChild(centroidLayer);
+
+// ============================================================
+// State
+// ============================================================
+let K = 3;
+let centroids = [];
+let assignments = new Array(dataset.length).fill(-1);
+let phase = 'idle'; // idle -> assign -> update -> assign -> update ... -> converged
+let iteration = 0;
+let converged = false;
+
+function dist(a,b){ return Math.sqrt(Math.pow(a.x-b.x,2)+Math.pow(a.y-b.y,2)); }
+
+function drawPoints(){
+  pointLayer.innerHTML = '';
+  dataset.forEach(function(d,i){
+    const color = assignments[i]>=0 ? CLUSTER_COLORS[assignments[i]] : '#AAB4C4';
+    pointLayer.appendChild(el('circle',{cx:xScale(d.x),cy:yScale(d.y),r:6.5,fill:color,stroke:'white','stroke-width':1.3}));
+  });
+}
+
+function drawCentroids(){
+  centroidLayer.innerHTML = '';
+  centroids.forEach(function(c,i){
+    const cx=xScale(c.x), cy=yScale(c.y);
+    const points = starPoints(cx,cy,10,4.5,5);
+    centroidLayer.appendChild(el('polygon',{points:points, fill:CLUSTER_COLORS[i], stroke:'#222','stroke-width':1.5}));
+  });
+}
+
+function starPoints(cx,cy,rOuter,rInner,n){
+  let pts=[];
+  for (let i=0;i<n*2;i++){
+    const r = i%2===0?rOuter:rInner;
+    const a = Math.PI/n*i - Math.PI/2;
+    pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));
+  }
+  return pts.join(' ');
+}
+
+function updateLegend(){
+  const box = document.getElementById('legendBox');
+  let html = '';
+  for (let i=0;i<K;i++){
+    html += '<span><span class="dot" style="background:'+CLUSTER_COLORS[i]+'"></span>กลุ่มที่ '+(i+1)+'</span>';
+  }
+  box.innerHTML = html;
+}
+
+function updateCentroidTable(){
+  if (centroids.length===0){ document.getElementById('centroidTable').style.display='none'; return; }
+  document.getElementById('centroidTable').style.display='table';
+  const tbody = document.getElementById('centroidTableBody');
+  tbody.innerHTML = '';
+  centroids.forEach(function(c,i){
+    const count = assignments.filter(function(a){ return a===i; }).length;
+    tbody.innerHTML += '<tr><td><span style="color:'+CLUSTER_COLORS[i]+';font-weight:700;">●</span> กลุ่มที่ '+(i+1)+'</td><td>('+c.x.toFixed(2)+', '+c.y.toFixed(2)+')</td><td>'+count+'</td></tr>';
+  });
+}
+
+function initCentroids(){
+  centroids = [];
+  const shuffled = dataset.slice().sort(function(){ return Math.random()-0.5; });
+  for (let i=0;i<K;i++){
+    centroids.push({x:shuffled[i].x, y:shuffled[i].y});
+  }
+  assignments = new Array(dataset.length).fill(-1);
+  iteration = 0;
+  converged = false;
+  phase = 'ready';
+}
+
+function assignStep(){
+  assignments = dataset.map(function(d){
+    let best=0, bestD=Infinity;
+    centroids.forEach(function(c,i){
+      const dd = dist(d,c);
+      if (dd<bestD){ bestD=dd; best=i; }
+    });
+    return best;
+  });
+  phase = 'assigned';
+}
+
+function updateStep(){
+  let moved = false;
+  const newCentroids = centroids.map(function(c,i){
+    const members = dataset.filter(function(d,idx){ return assignments[idx]===i; });
+    if (members.length===0) return c;
+    const mx = members.reduce(function(s,d){return s+d.x;},0)/members.length;
+    const my = members.reduce(function(s,d){return s+d.y;},0)/members.length;
+    if (Math.abs(mx-c.x)>0.01 || Math.abs(my-c.y)>0.01) moved = true;
+    return {x:mx, y:my};
+  });
+  centroids = newCentroids;
+  iteration++;
+  if (!moved) converged = true;
+  phase = 'updated';
+}
+
+const STEP_TEXT = {
+  idle: '<b>เริ่มต้นอัลกอริทึม</b><br>กดปุ่ม "เริ่มต้น (สุ่ม Centroid)" เพื่อสุ่มตำแหน่งจุดศูนย์กลาง (Centroid) เริ่มต้นจำนวน K จุดบนกราฟ',
+  ready: '<b>Centroid เริ่มต้นพร้อมแล้ว (รูปดาว)</b><br>กด "ขั้นถัดไป" เพื่อเริ่มขั้นตอนที่ 1: กำหนดสมาชิกให้แต่ละจุดข้อมูล (Assignment Step)',
+  assigned: '<b>Assignment Step: กำหนดสมาชิก</b><br>คำนวณระยะห่างจากแต่ละจุดข้อมูลไปยัง Centroid ทุกจุด แล้วกำหนดให้จุดข้อมูลนั้นเป็นสมาชิกของกลุ่มที่มี Centroid ใกล้ที่สุด (จุดข้อมูลเปลี่ยนสีตามกลุ่ม)',
+  updated: '<b>Update Step: ปรับตำแหน่ง Centroid</b><br>คำนวณตำแหน่งใหม่ของ Centroid แต่ละกลุ่ม โดยใช้ค่าเฉลี่ย (mean) ของสมาชิกทั้งหมดในกลุ่มนั้น: C = (Σx/n, Σy/n) แล้ววนกลับไปทำ Assignment Step ใหม่',
+  converged: '<b>ลู่เข้าสู่คำตอบแล้ว (Converged)</b><br>Centroid ไม่เคลื่อนที่อีกต่อไป (ตำแหน่งเดิมกับรอบก่อนหน้า) แสดงว่าอัลกอริทึมหาคำตอบที่เสถียรแล้ว การจัดกลุ่มนี้คือผลลัพธ์สุดท้าย',
+};
+
+function updateUI(){
+  document.getElementById('iterBadge').textContent = iteration===0 ? 'ยังไม่เริ่มต้น' : 'รอบที่ (Iteration) ' + iteration;
+  document.getElementById('stepDesc').innerHTML = converged ? STEP_TEXT.converged : STEP_TEXT[phase];
+  document.getElementById('nextBtn').disabled = phase==='idle' || converged;
+  document.getElementById('convergedBox').classList.toggle('show', converged);
+  updateCentroidTable();
+}
+
+function render(){
+  drawPoints();
+  drawCentroids();
+  updateLegend();
+  updateUI();
+}
+
+document.getElementById('initBtn').addEventListener('click', function(){
+  K = parseInt(document.getElementById('kSelect').value);
+  initCentroids();
+  render();
+});
+
+document.getElementById('nextBtn').addEventListener('click', function(){
+  if (phase==='ready' || phase==='updated'){
+    assignStep();
+  } else if (phase==='assigned'){
+    updateStep();
+  }
+  render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', function(){
+  centroids=[]; assignments=new Array(dataset.length).fill(-1);
+  phase='idle'; iteration=0; converged=false;
+  render();
+});
+
+// initial state: just points, no clusters
+render();
+</script>
+</body>
+</html>

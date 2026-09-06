@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>KNN Regression - Interactive Visualization</title>
+<style>
+  :root {
+    --navy: #21295C; --deepblue: #065A82; --teal: #1C7293; --mint: #5FBDB0;
+    --bg: #F4F8FA; --card: #FFFFFF; --text: #1E2761; --muted: #6B7A8F;
+    --point: #4C86C7; --border: #E2E8F0; --accent: #FFB020;
+  }
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,sans-serif; margin:0; padding:28px 32px; background:var(--bg); color:var(--text); }
+  h1 { font-size:24px; margin:0 0 4px 0; color:var(--navy); }
+  p.subtitle { color:var(--muted); margin:0 0 22px 0; font-size:14.5px; }
+  .layout { display:grid; grid-template-columns:640px 1fr; gap:22px; align-items:start; }
+  .panel { background:var(--card); border-radius:14px; padding:18px 20px; box-shadow:0 1px 6px rgba(20,30,60,0.08); }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-bottom:12px; }
+  .controls label { font-size:13.5px; font-weight:600; color:var(--deepblue); }
+  input[type=range] { width:160px; vertical-align:middle; }
+  .btn { background:var(--teal); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .btn:hover { background:var(--deepblue); }
+  .btn.secondary { background:var(--muted); }
+  .btn.secondary:hover { background:#55606f; }
+  .btn:disabled { background:#C6D0DC; cursor:not-allowed; }
+  svg { border-radius:10px; background:#FBFDFE; border:1px solid var(--border); cursor:crosshair; }
+  .legend { display:flex; gap:16px; margin-top:10px; font-size:12.5px; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+  .step-title { font-size:13px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .step-desc { font-size:14.5px; line-height:1.55; min-height:62px; }
+  .step-nav { display:flex; gap:8px; margin-top:12px; }
+  .stepper { display:flex; gap:6px; margin:14px 0; }
+  .stepper .seg { flex:1; height:6px; border-radius:4px; background:var(--border); transition:background 0.2s; }
+  .stepper .seg.active { background:var(--teal); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
+  th { color:var(--deepblue); font-weight:700; background:#EEF4F8; }
+  tr.knn-row { background:#FFF6E0; }
+  tr.knn-row td:first-child { font-weight:700; }
+  .result-box { margin-top:14px; padding:14px 16px; border-radius:10px; background:var(--navy); color:white; display:none; }
+  .result-box.show { display:block; }
+  .result-box .pred { font-size:22px; font-weight:800; }
+  .calc-line { font-family:'Courier New',monospace; font-size:12.5px; background:#EEF4F8; padding:10px 12px; border-radius:8px; margin-top:8px; line-height:1.6; display:none; }
+  .calc-line.show { display:block; }
+</style>
+</head>
+<body>
+
+<h1>K-Nearest Neighbor (KNN) — Regression</h1>
+<p class="subtitle">คลิกบนกราฟเพื่อเลือกค่า x ที่ต้องการทำนาย (Query) แล้วดูว่า KNN Regression ทำนายค่า y อย่างไร</p>
+
+<div class="layout">
+  <div class="panel">
+    <div class="controls">
+      <label>K = <span id="kValue">3</span></label>
+      <input type="range" id="kSlider" min="1" max="7" step="2" value="3">
+      <button class="btn" id="randomBtn">สุ่มจุด Query</button>
+      <button class="btn secondary" id="resetBtn">รีเซ็ต</button>
+    </div>
+    <svg id="chart" viewBox="0 0 635 470" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--point)"></span>ข้อมูลจริง (ขนาดบ้าน vs ราคา)</span>
+      <span><span class="dot" style="background:var(--accent);border:2px solid #333"></span>Query (x ที่ต้องการทำนาย)</span>
+    </div>
+    <div class="hint">แกน X = ขนาดบ้าน (ตร.ม.) &nbsp;|&nbsp; แกน Y = ราคาบ้าน (แสนบาท)</div>
+  </div>
+
+  <div class="panel">
+    <div class="step-title">ขั้นตอนการทำงานของ KNN Regression</div>
+    <div class="stepper">
+      <div class="seg active" id="seg0"></div><div class="seg" id="seg1"></div>
+      <div class="seg" id="seg2"></div><div class="seg" id="seg3"></div>
+    </div>
+    <div class="step-desc" id="stepDesc"></div>
+    <div class="step-nav">
+      <button class="btn" id="nextBtn">ขั้นถัดไป →</button>
+      <button class="btn secondary" id="prevBtn" disabled>← ย้อนกลับ</button>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <div style="font-size:12px;opacity:0.8;">ค่าที่ทำนายได้ (Predicted Value)</div>
+      <div class="pred" id="predText">-</div>
+    </div>
+    <div class="calc-line" id="calcLine"></div>
+
+    <table id="distTable" style="display:none;">
+      <thead><tr><th>#</th><th>ขนาด (ตร.ม.)</th><th>ราคา (แสนบาท)</th><th>|x-query|</th></tr></thead>
+      <tbody id="distTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Data: house size (sqm, 20-100) vs price (100k THB, roughly linear + noise)
+// ============================================================
+const dataset = [
+  {x:22,y:15}, {x:28,y:19}, {x:33,y:24}, {x:38,y:27}, {x:41,y:30},
+  {x:45,y:34}, {x:50,y:37}, {x:54,y:41}, {x:58,y:43}, {x:63,y:48},
+  {x:67,y:50}, {x:71,y:54}, {x:75,y:58}, {x:80,y:60}, {x:84,y:65},
+  {x:88,y:68}, {x:92,y:71}, {x:96,y:76}, {x:35,y:30}, {x:60,y:52},
+];
+
+const svg = document.getElementById('chart');
+const NS = 'http://www.w3.org/2000/svg';
+const marginLeft = 55, marginTop = 20, marginBottom = 45, plotW = 560, plotH = 400;
+const xMin=15, xMax=100, yMin=10, yMax=80;
+
+function xScale(v){ return marginLeft + ((v-xMin)/(xMax-xMin))*plotW; }
+function yScale(v){ return marginTop + plotH - ((v-yMin)/(yMax-yMin))*plotH; }
+function xInv(px){ return xMin + ((px-marginLeft)/plotW)*(xMax-xMin); }
+
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function drawAxes(){
+  const xTicks=[20,35,50,65,80,95], yTicks=[10,25,40,55,70,80];
+  xTicks.forEach(function(v){
+    svg.appendChild(el('line',{x1:xScale(v),y1:marginTop,x2:xScale(v),y2:marginTop+plotH,stroke:'#EEF2F6','stroke-width':1}));
+    const t=el('text',{x:xScale(v),y:marginTop+plotH+18,'font-size':11,fill:'#6B7A8F','text-anchor':'middle'}); t.textContent=v;
+    svg.appendChild(t);
+  });
+  yTicks.forEach(function(v){
+    svg.appendChild(el('line',{x1:marginLeft,y1:yScale(v),x2:marginLeft+plotW,y2:yScale(v),stroke:'#EEF2F6','stroke-width':1}));
+    const t=el('text',{x:marginLeft-10,y:yScale(v)+4,'font-size':11,fill:'#6B7A8F','text-anchor':'end'}); t.textContent=v;
+    svg.appendChild(t);
+  });
+  svg.appendChild(el('rect',{x:marginLeft,y:marginTop,width:plotW,height:plotH,fill:'none',stroke:'#C6D0DC'}));
+  const xl=el('text',{x:marginLeft+plotW/2,y:marginTop+plotH+38,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600}); xl.textContent='ขนาดบ้าน (ตร.ม.)';
+  svg.appendChild(xl);
+  const yl=el('text',{x:15,y:marginTop+plotH/2,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600,transform:'rotate(-90 15 '+(marginTop+plotH/2)+')'}); yl.textContent='ราคาบ้าน (แสนบาท)';
+  svg.appendChild(yl);
+}
+
+let dynamicLayer;
+function drawPoints(){
+  dataset.forEach(function(d,i){
+    svg.appendChild(el('circle',{cx:xScale(d.x),cy:yScale(d.y),r:6.5,fill:'#4C86C7',stroke:'white','stroke-width':1.5,'data-idx':i}));
+  });
+  dynamicLayer = el('g',{id:'dynamicLayer'});
+  svg.appendChild(dynamicLayer);
+}
+drawAxes();
+drawPoints();
+
+let queryX = null;
+let K = 3;
+let step = 0;
+
+function computeNeighbors(){
+  if (queryX===null) return [];
+  return dataset.map(function(d,i){
+    return { x:d.x, y:d.y, idx:i, d: Math.abs(d.x-queryX) };
+  }).sort(function(a,b){ return a.d-b.d; });
+}
+
+function render(){
+  dynamicLayer.innerHTML='';
+  Array.prototype.forEach.call(document.querySelectorAll('#chart circle[data-idx]'), function(c){
+    c.setAttribute('r',6.5); c.setAttribute('stroke','white'); c.setAttribute('stroke-width',1.5);
+  });
+  document.getElementById('kValue').textContent = K;
+
+  if (queryX===null){
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('calcLine').classList.remove('show');
+    document.getElementById('distTable').style.display='none';
+    return;
+  }
+
+  // vertical query line
+  dynamicLayer.appendChild(el('line',{x1:xScale(queryX),y1:marginTop,x2:xScale(queryX),y2:marginTop+plotH,stroke:'#FFB020','stroke-width':2,'stroke-dasharray':'4,3'}));
+
+  const neighbors = computeNeighbors();
+  const topK = neighbors.slice(0,K);
+
+  if (step>=1){
+    neighbors.forEach(function(n){
+      dynamicLayer.appendChild(el('line',{x1:xScale(queryX),y1:yScale(n.y),x2:xScale(n.x),y2:yScale(n.y),stroke:'#C6D0DC','stroke-width':1,'stroke-dasharray':'2,2'}));
+    });
+  }
+
+  if (step>=2){
+    topK.forEach(function(n){
+      const c = document.querySelector('#chart circle[data-idx="'+n.idx+'"]');
+      if (c){ c.setAttribute('r',9); c.setAttribute('stroke','#333'); c.setAttribute('stroke-width',2.5); }
+      dynamicLayer.appendChild(el('line',{x1:xScale(queryX),y1:yScale(n.y),x2:xScale(n.x),y2:yScale(n.y),stroke:'#1C7293','stroke-width':2}));
+    });
+    document.getElementById('distTable').style.display='table';
+    const tbody = document.getElementById('distTableBody');
+    tbody.innerHTML='';
+    neighbors.slice(0,8).forEach(function(n,i){
+      const tr = document.createElement('tr');
+      if (i<K) tr.className='knn-row';
+      tr.innerHTML = '<td>'+(i+1)+'</td><td>'+n.x.toFixed(1)+'</td><td>'+n.y.toFixed(1)+'</td><td>'+n.d.toFixed(2)+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  if (step>=3){
+    const sum = topK.reduce(function(s,n){ return s+n.y; }, 0);
+    const avg = sum/K;
+
+    dynamicLayer.appendChild(el('line',{x1:marginLeft,y1:yScale(avg),x2:marginLeft+plotW,y2:yScale(avg),stroke:'#5FBDB0','stroke-width':1.5,'stroke-dasharray':'5,3'}));
+    dynamicLayer.appendChild(el('circle',{cx:xScale(queryX),cy:yScale(avg),r:9,fill:'#FFB020',stroke:'#333','stroke-width':2}));
+
+    document.getElementById('resultBox').classList.add('show');
+    document.getElementById('predText').textContent = avg.toFixed(2) + ' แสนบาท';
+
+    const calcStr = topK.map(function(n){ return n.y.toFixed(1); }).join(' + ');
+    document.getElementById('calcLine').classList.add('show');
+    document.getElementById('calcLine').innerHTML =
+      'ŷ = (1/K) × Σyᵢ<br>' +
+      '&nbsp;&nbsp;= (' + calcStr + ') / ' + K + '<br>' +
+      '&nbsp;&nbsp;= ' + sum.toFixed(1) + ' / ' + K + ' = <b>' + avg.toFixed(2) + '</b>';
+  } else {
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('calcLine').classList.remove('show');
+  }
+}
+
+const STEP_TEXT = [
+  '<b>ขั้นที่ 1: เลือกค่า x ที่ต้องการทำนาย (Query)</b><br>คลิกบนกราฟเพื่อกำหนดขนาดบ้าน (x) ที่ต้องการทำนายราคา เส้นประสีส้มแสดงตำแหน่ง x ที่เลือก',
+  '<b>ขั้นที่ 2: คำนวณระยะห่างตามแกน X</b><br>คำนวณระยะห่าง |x_query − x_i| จากจุด Query ไปยังทุกจุดข้อมูล (ต่างจาก Classification ที่ใช้ระยะห่าง 2 มิติ ตัวอย่างนี้ใช้ 1 มิติเพื่อความง่าย)',
+  '<b>ขั้นที่ 3: เลือก K จุดที่ใกล้ที่สุด</b><br>เรียงลำดับตามระยะห่างจากน้อยไปมาก เลือก K จุดที่ใกล้ที่สุด (เส้นสีน้ำเงินเข้ม) ดูตารางประกอบด้านล่าง',
+  '<b>ขั้นที่ 4: คำนวณค่าเฉลี่ย (Average)</b><br>นำค่า y ของ K จุดที่ใกล้ที่สุดมาหาค่าเฉลี่ย (แทนการโหวตแบบ Classification) คือคำตอบการทำนาย ŷ',
+];
+
+function updateStepUI(){
+  document.getElementById('stepDesc').innerHTML = STEP_TEXT[step];
+  for (let i=0;i<4;i++) document.getElementById('seg'+i).classList.toggle('active', i<=step);
+  document.getElementById('prevBtn').disabled = step===0;
+  document.getElementById('nextBtn').disabled = step===3 || queryX===null;
+  document.getElementById('nextBtn').textContent = step===3 ? 'เสร็จสิ้น ✓' : 'ขั้นถัดไป →';
+}
+
+svg.addEventListener('click', function(e){
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 635/rect.width;
+  const px = (e.clientX-rect.left)*scaleX;
+  if (px<marginLeft || px>marginLeft+plotW) return;
+  queryX = xInv(px);
+  step = 0;
+  updateStepUI();
+  render();
+});
+
+document.getElementById('kSlider').addEventListener('input', function(e){
+  K = parseInt(e.target.value);
+  render();
+});
+document.getElementById('nextBtn').addEventListener('click', function(){
+  if (step<3){ step++; updateStepUI(); render(); }
+});
+document.getElementById('prevBtn').addEventListener('click', function(){
+  if (step>0){ step--; updateStepUI(); render(); }
+});
+document.getElementById('resetBtn').addEventListener('click', function(){
+  queryX=null; step=0; updateStepUI(); render();
+});
+document.getElementById('randomBtn').addEventListener('click', function(){
+  queryX = xMin + Math.random()*(xMax-xMin);
+  step=0; updateStepUI(); render();
+});
+
+queryX = 55;
+step = 0;
+updateStepUI();
+render();
+</script>
+</body>
+</html>
