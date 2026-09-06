@@ -44,6 +44,18 @@
   .result-box .pred { font-size:22px; font-weight:800; }
   .calc-line { font-family:'Courier New',monospace; font-size:12.5px; background:#EEF4F8; padding:10px 12px; border-radius:8px; margin-top:8px; line-height:1.6; display:none; }
   .calc-line.show { display:block; }
+
+  /* Theory Panel Styling */
+  .theory-panel { margin-top: 22px; }
+  .theory-title { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px; }
+  .theory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .theory-card { background: #F8FAFC; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .theory-card h3 { font-size: 14px; color: var(--deepblue); margin: 0 0 8px 0; font-weight: 700; }
+  .theory-card p, .theory-card ul { font-size: 13px; color: var(--text); line-height: 1.55; margin: 0; padding-left: 0; }
+  .theory-card ul { list-style-type: none; }
+  .theory-card li { margin-bottom: 6px; position: relative; padding-left: 16px; }
+  .theory-card li::before { content: "•"; color: var(--teal); font-weight: bold; position: absolute; left: 0; }
+  .formula-box { background: #FFFFFF; border-left: 3px solid var(--teal); padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12.5px; color: var(--navy); margin: 8px 0; }
 </style>
 </head>
 <body>
@@ -89,6 +101,42 @@
       <thead><tr><th>#</th><th>ขนาด (ตร.ม.)</th><th>ราคา (แสนบาท)</th><th>|x-query|</th></tr></thead>
       <tbody id="distTableBody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- Theory Section -->
+<div class="panel theory-panel">
+  <div class="theory-title">📌 สรุปทฤษฎีและคณิตศาสตร์ของ KNN Regression</div>
+  <div class="theory-grid">
+    
+    <div class="theory-card">
+      <h3>1. แนวคิดพื้นฐาน (Core Concept)</h3>
+      <p>KNN Regression คืออัลกอริทึมสำหรับทำนาย <b>ค่าตัวเลขต่อเนื่อง (Continuous Value)</b> ต่างจาก Classification ที่ทำนายคลาส โดยอาศัยสมมติฐานว่า ข้อมูลที่มีอินพุต (X) ใกล้เคียงกัน ควรจะมีเอาต์พุต (Y) ใกล้เคียงกันด้วย</p>
+    </div>
+
+    <div class="theory-card">
+      <h3>2. การคำนวณระยะห่าง (Distance Metric)</h3>
+      <p>คำนวณหาระยะห่างระหว่างจุด Query กับจุดข้อมูลเดิม หากมีฟีเจอร์เดียว (1D) จะใช้ระยะห่างสัมบูรณ์:</p>
+      <div class="formula-box">d(x, x<sub>i</sub>) = |x<sub>query</sub> - x<sub>i</sub>|</div>
+      <p>หากมีหลายฟีเจอร์ (Multi-D) จะใช้ Euclidean Distance รวมทุกแกนคุณลักษณะ</p>
+    </div>
+
+    <div class="theory-card">
+      <h3>3. สูตรทำนายผลลัพธ์ (Prediction Formula)</h3>
+      <p>คำนวณค่าทำนาย ŷ โดยนำค่า y ของเพื่อนบ้านที่ใกล้ที่สุด K จุดมาหา <b>ค่าเฉลี่ย (Mean)</b>:</p>
+      <div class="formula-box">ŷ = (1 / K) * ∑<sub>i=1..K</sub> y<sub>i</sub></div>
+      <p><i>เพิ่มเติม:</i> สามารถใช้ Weighted Average โดยถ่วงน้ำหนักตามส่วนกลับของระยะห่าง (1/d) ได้ด้วย</p>
+    </div>
+
+    <div class="theory-card">
+      <h3>4. ข้อแตกต่างหลักจาก KNN Classification</h3>
+      <ul>
+        <li><b>Classification:</b> ตัดสินคำตอบด้วยการโหวตเสียงข้างมาก (Majority Vote)</li>
+        <li><b>Regression:</b> ตัดสินคำตอบด้วยการหาค่าเฉลี่ยเชิงตัวเลข (Average / Weighted Mean)</li>
+        <li><b>การเลือกค่า K:</b> K น้อยเสี่ยง Overfitting กราฟขรุขระ, K มากเสี่ยง Underfitting กราฟเรียบเกินไป</li>
+      </ul>
+    </div>
+
   </div>
 </div>
 
