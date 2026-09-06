@@ -2,321 +2,345 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>K-Means Clustering - Interactive Visualization</title>
+<title>KNN Classification - Interactive Visualization</title>
 <style>
   :root {
-    --navy: #21295C; --deepblue: #065A82; --teal: #1C7293; --mint: #5FBDB0;
-    --bg: #F4F8FA; --card: #FFFFFF; --text: #1E2761; --muted: #6B7A8F; --border: #E2E8F0;
+    --navy: #21295C;
+    --deepblue: #065A82;
+    --teal: #1C7293;
+    --mint: #5FBDB0;
+    --bg: #F4F8FA;
+    --card: #FFFFFF;
+    --text: #1E2761;
+    --muted: #6B7A8F;
+    --fruit: #E85D5D;
+    --veg: #45A876;
+    --protein: #4C86C7;
+    --border: #E2E8F0;
   }
   * { box-sizing: border-box; }
-  body { font-family:'Segoe UI',Tahoma,sans-serif; margin:0; padding:28px 32px; background:var(--bg); color:var(--text); }
-  h1 { font-size:24px; margin:0 0 4px 0; color:var(--navy); }
-  p.subtitle { color:var(--muted); margin:0 0 22px 0; font-size:14.5px; }
-  .layout { display:grid; grid-template-columns:640px 1fr; gap:22px; align-items:start; }
-  .panel { background:var(--card); border-radius:14px; padding:18px 20px; box-shadow:0 1px 6px rgba(20,30,60,0.08); }
-  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:12px; }
-  .controls label { font-size:13.5px; font-weight:600; color:var(--deepblue); }
-  select { padding:5px 8px; border-radius:6px; border:1px solid var(--border); font-size:13px; }
-  .btn { background:var(--teal); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13.5px; font-weight:600; cursor:pointer; }
-  .btn:hover { background:var(--deepblue); }
-  .btn.secondary { background:var(--muted); }
-  .btn.secondary:hover { background:#55606f; }
-  .btn:disabled { background:#C6D0DC; cursor:not-allowed; }
-  svg { border-radius:10px; background:#FBFDFE; border:1px solid var(--border); }
-  .legend { display:flex; gap:16px; margin-top:10px; font-size:12.5px; flex-wrap:wrap; }
-  .legend span { display:inline-flex; align-items:center; gap:6px; }
-  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
-  .hint { font-size:12px; color:var(--muted); margin-top:8px; }
-  .step-title { font-size:13px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
-  .step-desc { font-size:14.5px; line-height:1.55; min-height:80px; }
-  .step-nav { display:flex; gap:8px; margin-top:12px; flex-wrap: wrap; }
-  .iter-badge {
-    display:inline-block; background:var(--navy); color:white; font-size:12.5px; font-weight:700;
-    padding:4px 12px; border-radius:20px; margin-bottom:10px;
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin: 0; padding: 28px 32px;
+    background: var(--bg); color: var(--text);
   }
-  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
-  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
-  th { color:var(--deepblue); font-weight:700; background:#EEF4F8; }
-  .converged-box {
-    margin-top:14px; padding:12px 16px; border-radius:10px; background:#E8F7F1; color:#1D6B4E;
-    font-size:13.5px; font-weight:700; display:none; border:1px solid #B8E6D0;
+  h1 { font-size: 24px; margin: 0 0 4px 0; color: var(--navy); }
+  p.subtitle { color: var(--muted); margin: 0 0 22px 0; font-size: 14.5px; }
+  .layout { display: grid; grid-template-columns: 640px 1fr; gap: 22px; align-items: start; }
+  .panel {
+    background: var(--card); border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 1px 6px rgba(20,30,60,0.08);
   }
-  .converged-box.show { display:block; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .controls label { font-size: 13.5px; font-weight: 600; color: var(--deepblue); }
+  input[type=range] { width: 140px; vertical-align: middle; }
+  .btn {
+    background: var(--teal); color: white; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--deepblue); }
+  .btn.secondary { background: var(--muted); }
+  .btn.secondary:hover { background: #55606f; }
+  .btn:disabled { background: #C6D0DC; cursor: not-allowed; }
+  svg { border-radius: 10px; background: #FBFDFE; border: 1px solid var(--border); cursor: crosshair; }
+  .legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12.5px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
-  /* Theory Panel Styling */
-  .theory-panel { margin-top:22px; }
-  .theory-title { font-size:18px; font-weight:700; color:var(--navy); margin:0 0 14px 0; display:flex; align-items:center; gap:8px; }
-  .theory-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
-  .theory-card { background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
-  .theory-card h3 { font-size:14px; color:var(--deepblue); margin:0 0 8px 0; font-weight:700; }
-  .theory-card p, .theory-card ul { font-size:13px; color:var(--text); line-height:1.55; margin:0; padding-left:0; }
-  .theory-card ul { list-style-type:none; }
-  .theory-card li { margin-bottom:6px; position:relative; padding-left:16px; }
-  .theory-card li::before { content:"•"; color:var(--teal); font-weight:bold; position:absolute; left:0; }
-  .formula-box { background:#FFFFFF; border-left:3px solid var(--teal); padding:8px 12px; border-radius:4px; font-family:'Courier New', monospace; font-size:12.5px; color:var(--navy); margin:8px 0; }
+  .step-title { font-size: 13px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .step-desc { font-size: 14.5px; line-height: 1.55; min-height: 62px; }
+  .step-nav { display: flex; gap: 8px; margin-top: 12px; }
+  .stepper { display: flex; gap: 6px; margin: 14px 0; }
+  .stepper .seg { flex: 1; height: 6px; border-radius: 4px; background: var(--border); transition: background 0.2s; }
+  .stepper .seg.active { background: var(--teal); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--deepblue); font-weight: 700; background: #EEF4F8; }
+  tr.knn-row { background: #FFF6E0; }
+  tr.knn-row td:first-child { font-weight: 700; }
+
+  .result-box {
+    margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+    background: var(--navy); color: white; display: none;
+  }
+  .result-box.show { display: block; }
+  .result-box .pred { font-size: 20px; font-weight: 800; }
+  .vote-bars { display: flex; gap: 8px; margin-top: 8px; }
+  .vote-bar { flex: 1; text-align: center; font-size: 11.5px; }
+  .vote-bar .bar { height: 10px; border-radius: 5px; margin-bottom: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+  .vote-bar .fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
 </style>
 </head>
 <body>
 
-<h1>K-Means Clustering</h1>
-<p class="subtitle">อัลกอริทึมจัดกลุ่มข้อมูลแบบไม่มีผู้สอน (Unsupervised) — กด "เริ่มต้น" แล้วกด "ขั้นถัดไป" เพื่อดูการวนซ้ำทีละรอบ</p>
+<h1>K-Nearest Neighbor (KNN) — Classification</h1>
+<p class="subtitle">คลิกบนกราฟเพื่อวางจุดข้อมูลใหม่ (Query Point) แล้วดูว่าอัลกอริทึม KNN ตัดสินใจจำแนกประเภทอย่างไร</p>
 
 <div class="layout">
+  <!-- LEFT: Canvas -->
   <div class="panel">
     <div class="controls">
-      <label>K (จำนวนกลุ่ม) =</label>
-      <select id="kSelect">
-        <option value="2">2</option>
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-      </select>
-      <button class="btn" id="initBtn">เริ่มต้น (สุ่ม Centroid)</button>
+      <label>K = <span id="kValue">3</span></label>
+      <input type="range" id="kSlider" min="1" max="9" step="2" value="3">
+      <button class="btn" id="randomBtn">สุ่มจุด Query</button>
       <button class="btn secondary" id="resetBtn">รีเซ็ต</button>
     </div>
     <svg id="chart" viewBox="0 0 635 470" width="100%" height="460"></svg>
-    <div class="legend" id="legendBox"></div>
-    <div class="hint">จุดวงกลมเล็ก = ข้อมูล &nbsp;|&nbsp; รูปดาว = Centroid (จุดศูนย์กลางของแต่ละกลุ่ม)</div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--fruit)"></span>ผลไม้ (Fruit)</span>
+      <span><span class="dot" style="background:var(--veg)"></span>ผัก (Vegetable)</span>
+      <span><span class="dot" style="background:var(--protein)"></span>โปรตีน (Protein)</span>
+      <span><span class="dot" style="background:#FFB020;border:2px solid #333"></span>Query Point</span>
+    </div>
+    <div class="hint">แกน X = ความหวาน (Sweetness) 0-10 &nbsp;|&nbsp; แกน Y = ความกรอบ (Crunchiness) 0-10</div>
   </div>
 
+  <!-- RIGHT: Explanation -->
   <div class="panel">
-    <div class="iter-badge" id="iterBadge">ยังไม่เริ่มต้น</div>
-    <div class="step-title">ขั้นตอนการทำงานของ K-Means</div>
+    <div class="step-title">ขั้นตอนการทำงานของ KNN</div>
+    <div class="stepper">
+      <div class="seg active" id="seg0"></div>
+      <div class="seg" id="seg1"></div>
+      <div class="seg" id="seg2"></div>
+      <div class="seg" id="seg3"></div>
+    </div>
     <div class="step-desc" id="stepDesc">
-      <b>เริ่มต้นอัลกอริทึม</b><br>กดปุ่ม "เริ่มต้น (สุ่ม Centroid)" เพื่อสุ่มตำแหน่งจุดศูนย์กลาง (Centroid) เริ่มต้นจำนวน K จุดบนกราฟ
+      <b>ขั้นที่ 1: วางจุดข้อมูลใหม่ (Query Point)</b><br>
+      คลิกบนกราฟด้านซ้ายเพื่อวางจุดข้อมูลที่ยังไม่ทราบประเภท (แสดงเป็นจุดสีส้ม) ระบบจะเริ่มคำนวณระยะห่างจากจุดนี้ไปยังข้อมูลทุกจุดที่มีอยู่แล้ว
     </div>
     <div class="step-nav">
-      <button class="btn" id="nextBtn" disabled>ขั้นถัดไป →</button>
+      <button class="btn" id="nextBtn">ขั้นถัดไป →</button>
+      <button class="btn secondary" id="prevBtn" disabled>← ย้อนกลับ</button>
     </div>
-    <div class="converged-box" id="convergedBox">✓ Centroid หยุดเคลื่อนที่แล้ว — อัลกอริทึมลู่เข้าสู่คำตอบ (Converged)</div>
 
-    <table id="centroidTable" style="display:none;">
-      <thead><tr><th>Centroid</th><th>ตำแหน่ง (x, y)</th><th>จำนวนสมาชิก</th></tr></thead>
-      <tbody id="centroidTableBody"></tbody>
+    <div class="result-box" id="resultBox">
+      <div style="font-size:12px;opacity:0.8;">ผลการทำนาย (Prediction)</div>
+      <div class="pred" id="predText">-</div>
+      <div class="vote-bars" id="voteBars"></div>
+    </div>
+
+    <table id="distTable" style="display:none;">
+      <thead><tr><th>#</th><th>จุดข้อมูล</th><th>ประเภท</th><th>ระยะห่าง</th></tr></thead>
+      <tbody id="distTableBody"></tbody>
     </table>
   </div>
 </div>
 
-<!-- Theory Section -->
-<div class="panel theory-panel">
-  <div class="theory-title">📌 สรุปทฤษฎีและคณิตศาสตร์ของ K-Means Clustering</div>
-  <div class="theory-grid">
-    
-    <div class="theory-card">
-      <h3>1. แนวคิดพื้นฐาน (Core Concept)</h3>
-      <p>K-Means เป็นอัลกอริทึมประเภท <b>Unsupervised Learning</b> ที่ใช้แบ่งกลุ่มข้อมูลออกเป็น <b>K กลุ่ม</b> โดยอิงจากระยะห่าง เป้าหมายคือทำให้จุดข้อมูลภายในกลุ่มเดียวกันอยู่ใกล้กันมากที่สุด (Maximize intra-cluster similarity)</p>
-    </div>
-
-    <div class="theory-card">
-      <h3>2. การคำนวณระยะห่าง (Assignment Step)</h3>
-      <p>ใช้ <b>Euclidean Distance</b> ในการหาระยะห่างระหว่างจุดข้อมูล (x, y) กับจุด Centroid (c<sub>x</sub>, c<sub>y</sub>):</p>
-      <div class="formula-box">d(P, C) = √[(x - c<sub>x</sub>)<sup>2</sup> + (y - c<sub>y</sub>)<sup>2</sup>]</div>
-      <p>จุดข้อมูลจะถูกจัดเข้ากลุ่มของ Centroid ที่มีค่า d สั้นที่สุด</p>
-    </div>
-
-    <div class="theory-card">
-      <h3>3. การปรับตำแหน่งศูนย์กลาง (Update Step)</h3>
-      <p>คำนวณตำแหน่ง Centroid ใหม่ โดยใช้ค่าเฉลี่ย (Mean) ของพิกัดข้อมูลทั้งหมดที่อยู่ในกลุ่มนั้น:</p>
-      <div class="formula-box">C<sub>k</sub> = ( 1/N<sub>k</sub> ∑ x<sub>i</sub> , 1/N<sub>k</sub> ∑ y<sub>i</sub> )</div>
-      <p>เมื่อ N<sub>k</sub> คือจำนวนจุดข้อมูลทั้งหมดในกลุ่ม k</p>
-    </div>
-
-    <div class="theory-card">
-      <h3>4. เป้าหมายทางคณิตศาสตร์ (Objective Function)</h3>
-      <p>อัลกอริทึมพยายามลดค่า <b>WCSS (Within-Cluster Sum of Squares)</b> ให้ได้มากที่สุด:</p>
-      <div class="formula-box">J = ∑<sub>k=1..K</sub> ∑<sub>x ∈ S<sub>k</sub></sub> ||x - c<sub>k</sub>||<sup>2</sup></div>
-      <p>จะหยุดทำงาน (Converged) เมื่อตำแหน่ง Centroid ไม่เปลี่ยนแปลงอีกต่อไป</p>
-    </div>
-
-  </div>
-</div>
-
 <script>
-const CLUSTER_COLORS = ['#E85D5D', '#45A876', '#4C86C7', '#C79B4C'];
+// ============================================================
+// Data: sweetness(0-10), crunchiness(0-10), class
+// ============================================================
+const CLASS_COLOR = { fruit: '#E85D5D', veg: '#45A876', protein: '#4C86C7' };
+const CLASS_NAME = { fruit: 'ผลไม้', veg: 'ผัก', protein: 'โปรตีน' };
 
-// 2D dataset - roughly 3-4 natural clusters
 const dataset = [
-  {x:2.0,y:2.5},{x:2.5,y:1.8},{x:1.6,y:3.0},{x:3.0,y:2.2},{x:2.2,y:1.5},{x:1.8,y:2.8},{x:2.8,y:3.1},
-  {x:8.0,y:2.0},{x:8.5,y:1.5},{x:7.6,y:2.6},{x:8.8,y:2.4},{x:7.9,y:1.6},{x:8.3,y:2.9},{x:7.5,y:1.9},
-  {x:5.0,y:8.0},{x:5.5,y:8.5},{x:4.6,y:7.6},{x:5.8,y:7.8},{x:4.9,y:8.8},{x:5.3,y:7.3},{x:4.5,y:8.3},
-  {x:8.5,y:7.5},{x:9.0,y:8.0},{x:8.2,y:8.4},{x:9.2,y:7.3},{x:8.7,y:8.7},
+  {x:8.2,y:2.5,c:'fruit'}, {x:8.8,y:3.4,c:'fruit'}, {x:7.5,y:1.8,c:'fruit'},
+  {x:9.1,y:3.0,c:'fruit'}, {x:7.9,y:3.8,c:'fruit'}, {x:8.4,y:1.5,c:'fruit'}, {x:7.2,y:2.9,c:'fruit'},
+  {x:2.3,y:8.1,c:'veg'}, {x:3.1,y:7.5,c:'veg'}, {x:1.8,y:8.8,c:'veg'},
+  {x:2.9,y:9.0,c:'veg'}, {x:3.6,y:8.3,c:'veg'}, {x:2.0,y:7.2,c:'veg'}, {x:3.3,y:7.9,c:'veg'},
+  {x:2.5,y:2.8,c:'protein'}, {x:3.2,y:1.9,c:'protein'}, {x:1.9,y:3.4,c:'protein'},
+  {x:3.6,y:2.5,c:'protein'}, {x:2.1,y:1.6,c:'protein'}, {x:2.8,y:3.7,c:'protein'}, {x:1.6,y:2.2,c:'protein'},
 ];
 
+// ============================================================
+// SVG plot setup
+// ============================================================
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
-const marginLeft=55, marginTop=20, marginBottom=45, plotW=560, plotH=400;
-const xMin=0,xMax=10,yMin=0,yMax=10;
+const marginLeft = 55, marginTop = 20, marginBottom = 45, plotW = 560, plotH = 400;
 
-function xScale(v){ return marginLeft + ((v-xMin)/(xMax-xMin))*plotW; }
-function yScale(v){ return marginTop + plotH - ((v-yMin)/(yMax-yMin))*plotH; }
+function xScale(v) { return marginLeft + (v/10)*plotW; }
+function yScale(v) { return marginTop + plotH - (v/10)*plotH; }
 
-function el(tag, attrs){
+function el(tag, attrs) {
   const e = document.createElementNS(NS, tag);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
   return e;
 }
 
-function drawAxes(){
-  for (let i=0;i<=10;i+=2){
+function drawAxes() {
+  for (let i=0;i<=10;i+=2) {
     svg.appendChild(el('line',{x1:xScale(i),y1:marginTop,x2:xScale(i),y2:marginTop+plotH,stroke:'#EEF2F6','stroke-width':1}));
     svg.appendChild(el('line',{x1:marginLeft,y1:yScale(i),x2:marginLeft+plotW,y2:yScale(i),stroke:'#EEF2F6','stroke-width':1}));
-    const tx=el('text',{x:xScale(i),y:marginTop+plotH+18,'font-size':11,fill:'#6B7A8F','text-anchor':'middle'}); tx.textContent=i;
+    const tx = el('text',{x:xScale(i),y:marginTop+plotH+18,'font-size':11,fill:'#6B7A8F','text-anchor':'middle'}); tx.textContent = i;
     svg.appendChild(tx);
-    const ty=el('text',{x:marginLeft-10,y:yScale(i)+4,'font-size':11,fill:'#6B7A8F','text-anchor':'end'}); ty.textContent=i;
+    const ty = el('text',{x:marginLeft-10,y:yScale(i)+4,'font-size':11,fill:'#6B7A8F','text-anchor':'end'}); ty.textContent = i;
     svg.appendChild(ty);
   }
   svg.appendChild(el('rect',{x:marginLeft,y:marginTop,width:plotW,height:plotH,fill:'none',stroke:'#C6D0DC'}));
+  const xl = el('text',{x:marginLeft+plotW/2,y:marginTop+plotH+38,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600}); xl.textContent='ความหวาน (Sweetness)';
+  svg.appendChild(xl);
+  const yl = el('text',{x:15,y:marginTop+plotH/2,'font-size':12.5,fill:'#1E2761','text-anchor':'middle','font-weight':600, transform:`rotate(-90 15 ${marginTop+plotH/2})`}); yl.textContent='ความกรอบ (Crunchiness)';
+  svg.appendChild(yl);
 }
-drawAxes();
 
-let pointLayer = el('g',{id:'pointLayer'});
-let centroidLayer = el('g',{id:'centroidLayer'});
-svg.appendChild(pointLayer);
-svg.appendChild(centroidLayer);
+let dynamicLayer;
+function drawPoints() {
+  dataset.forEach((d,i) => {
+    const c = el('circle', {cx:xScale(d.x), cy:yScale(d.y), r:7, fill:CLASS_COLOR[d.c], stroke:'white', 'stroke-width':1.5, 'data-idx':i});
+    svg.appendChild(c);
+  });
+  dynamicLayer = el('g', {id:'dynamicLayer'});
+  svg.appendChild(dynamicLayer);
+}
+
+drawAxes();
+drawPoints();
 
 // ============================================================
 // State
 // ============================================================
+let query = null;
 let K = 3;
-let centroids = [];
-let assignments = new Array(dataset.length).fill(-1);
-let phase = 'idle'; // idle -> assign -> update -> assign -> update ... -> converged
-let iteration = 0;
-let converged = false;
+let step = 0; // 0..3
 
-function dist(a,b){ return Math.sqrt(Math.pow(a.x-b.x,2)+Math.pow(a.y-b.y,2)); }
+function dist(a,b) { return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y-b.y,2)); }
 
-function drawPoints(){
-  pointLayer.innerHTML = '';
-  dataset.forEach(function(d,i){
-    const color = assignments[i]>=0 ? CLUSTER_COLORS[assignments[i]] : '#AAB4C4';
-    pointLayer.appendChild(el('circle',{cx:xScale(d.x),cy:yScale(d.y),r:6.5,fill:color,stroke:'white','stroke-width':1.3}));
+function computeNeighbors() {
+  if (!query) return [];
+  return dataset.map(function(d,i) {
+    return { x:d.x, y:d.y, c:d.c, idx:i, d: dist(query,d) };
+  }).sort(function(a,b){ return a.d-b.d; });
+}
+
+function render() {
+  dynamicLayer.innerHTML = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#chart circle[data-idx]'), function(c) {
+    c.setAttribute('r', 7);
+    c.setAttribute('opacity', 1);
   });
-}
 
-function drawCentroids(){
-  centroidLayer.innerHTML = '';
-  centroids.forEach(function(c,i){
-    const cx=xScale(c.x), cy=yScale(c.y);
-    const points = starPoints(cx,cy,10,4.5,5);
-    centroidLayer.appendChild(el('polygon',{points:points, fill:CLUSTER_COLORS[i], stroke:'#222','stroke-width':1.5}));
-  });
-}
+  document.getElementById('kValue').textContent = K;
 
-function starPoints(cx,cy,rOuter,rInner,n){
-  let pts=[];
-  for (let i=0;i<n*2;i++){
-    const r = i%2===0?rOuter:rInner;
-    const a = Math.PI/n*i - Math.PI/2;
-    pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));
+  if (!query) {
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('distTable').style.display = 'none';
+    return;
   }
-  return pts.join(' ');
-}
 
-function updateLegend(){
-  const box = document.getElementById('legendBox');
-  let html = '';
-  for (let i=0;i<K;i++){
-    html += '<span><span class="dot" style="background:'+CLUSTER_COLORS[i]+'"></span>กลุ่มที่ '+(i+1)+'</span>';
-  }
-  box.innerHTML = html;
-}
+  const neighbors = computeNeighbors();
+  const topK = neighbors.slice(0, K);
 
-function updateCentroidTable(){
-  if (centroids.length===0){ document.getElementById('centroidTable').style.display='none'; return; }
-  document.getElementById('centroidTable').style.display='table';
-  const tbody = document.getElementById('centroidTableBody');
-  tbody.innerHTML = '';
-  centroids.forEach(function(c,i){
-    const count = assignments.filter(function(a){ return a===i; }).length;
-    tbody.innerHTML += '<tr><td><span style="color:'+CLUSTER_COLORS[i]+';font-weight:700;">●</span> กลุ่มที่ '+(i+1)+'</td><td>('+c.x.toFixed(2)+', '+c.y.toFixed(2)+')</td><td>'+count+'</td></tr>';
-  });
-}
+  // draw query point
+  dynamicLayer.appendChild(el('circle', {cx:xScale(query.x), cy:yScale(query.y), r:9, fill:'#FFB020', stroke:'#333', 'stroke-width':2}));
 
-function initCentroids(){
-  centroids = [];
-  const shuffled = dataset.slice().sort(function(){ return Math.random()-0.5; });
-  for (let i=0;i<K;i++){
-    centroids.push({x:shuffled[i].x, y:shuffled[i].y});
-  }
-  assignments = new Array(dataset.length).fill(-1);
-  iteration = 0;
-  converged = false;
-  phase = 'ready';
-}
-
-function assignStep(){
-  assignments = dataset.map(function(d){
-    let best=0, bestD=Infinity;
-    centroids.forEach(function(c,i){
-      const dd = dist(d,c);
-      if (dd<bestD){ bestD=dd; best=i; }
+  if (step >= 1) {
+    // step 1: show distance lines to all points (thin, faded)
+    neighbors.forEach(n => {
+      dynamicLayer.appendChild(el('line', {
+        x1:xScale(query.x), y1:yScale(query.y), x2:xScale(n.x), y2:yScale(n.y),
+        stroke:'#C6D0DC', 'stroke-width':1, 'stroke-dasharray':'2,2'
+      }));
     });
-    return best;
-  });
-  phase = 'assigned';
-}
-
-function updateStep(){
-  let moved = false;
-  const newCentroids = centroids.map(function(c,i){
-    const members = dataset.filter(function(d,idx){ return assignments[idx]===i; });
-    if (members.length===0) return c;
-    const mx = members.reduce(function(s,d){return s+d.x;},0)/members.length;
-    const my = members.reduce(function(s,d){return s+d.y;},0)/members.length;
-    if (Math.abs(mx-c.x)>0.01 || Math.abs(my-c.y)>0.01) moved = true;
-    return {x:mx, y:my};
-  });
-  centroids = newCentroids;
-  iteration++;
-  if (!moved) converged = true;
-  phase = 'updated';
-}
-
-const STEP_TEXT = {
-  idle: '<b>เริ่มต้นอัลกอริทึม</b><br>กดปุ่ม "เริ่มต้น (สุ่ม Centroid)" เพื่อสุ่มตำแหน่งจุดศูนย์กลาง (Centroid) เริ่มต้นจำนวน K จุดบนกราฟ',
-  ready: '<b>Centroid เริ่มต้นพร้อมแล้ว (รูปดาว)</b><br>กด "ขั้นถัดไป" เพื่อเริ่มขั้นตอนที่ 1: กำหนดสมาชิกให้แต่ละจุดข้อมูล (Assignment Step)',
-  assigned: '<b>Assignment Step: กำหนดสมาชิก</b><br>คำนวณระยะห่างจากแต่ละจุดข้อมูลไปยัง Centroid ทุกจุด แล้วกำหนดให้จุดข้อมูลนั้นเป็นสมาชิกของกลุ่มที่มี Centroid ใกล้ที่สุด (จุดข้อมูลเปลี่ยนสีตามกลุ่ม)',
-  updated: '<b>Update Step: ปรับตำแหน่ง Centroid</b><br>คำนวณตำแหน่งใหม่ของ Centroid แต่ละกลุ่ม โดยใช้ค่าเฉลี่ย (mean) ของสมาชิกทั้งหมดในกลุ่มนั้น: C = (Σx/n, Σy/n) แล้ววนกลับไปทำ Assignment Step ใหม่',
-  converged: '<b>ลู่เข้าสู่คำตอบแล้ว (Converged)</b><br>Centroid ไม่เคลื่อนที่อีกต่อไป (ตำแหน่งเดิมกับรอบก่อนหน้า) แสดงว่าอัลกอริทึมหาคำตอบที่เสถียรแล้ว การจัดกลุ่มนี้คือผลลัพธ์สุดท้าย',
-};
-
-function updateUI(){
-  document.getElementById('iterBadge').textContent = iteration===0 ? 'ยังไม่เริ่มต้น' : 'รอบที่ (Iteration) ' + iteration;
-  document.getElementById('stepDesc').innerHTML = converged ? STEP_TEXT.converged : STEP_TEXT[phase];
-  document.getElementById('nextBtn').disabled = phase==='idle' || converged;
-  document.getElementById('convergedBox').classList.toggle('show', converged);
-  updateCentroidTable();
-}
-
-function render(){
-  drawPoints();
-  drawCentroids();
-  updateLegend();
-  updateUI();
-}
-
-document.getElementById('initBtn').addEventListener('click', function(){
-  K = parseInt(document.getElementById('kSelect').value);
-  initCentroids();
-  render();
-});
-
-document.getElementById('nextBtn').addEventListener('click', function(){
-  if (phase==='ready' || phase==='updated'){
-    assignStep();
-  } else if (phase==='assigned'){
-    updateStep();
   }
+
+  if (step >= 2) {
+    // step 2: highlight K nearest with circle boundary + solid lines
+    const kthDist = topK[topK.length-1].d;
+    dynamicLayer.appendChild(el('circle', {
+      cx:xScale(query.x), cy:yScale(query.y), r: kthDist*(plotW/10),
+      fill:'rgba(28,114,147,0.07)', stroke:'#1C7293', 'stroke-width':1.5, 'stroke-dasharray':'5,3'
+    }));
+    topK.forEach(n => {
+      dynamicLayer.appendChild(el('line', {
+        x1:xScale(query.x), y1:yScale(query.y), x2:xScale(n.x), y2:yScale(n.y),
+        stroke:'#1C7293', 'stroke-width':2
+      }));
+      const c = document.querySelector(`#chart circle[data-idx="${n.idx}"]`);
+      if (c) { c.setAttribute('r', 10); c.setAttribute('stroke', '#333'); c.setAttribute('stroke-width', 2.5); }
+    });
+
+    // distance table
+    document.getElementById('distTable').style.display = 'table';
+    const tbody = document.getElementById('distTableBody');
+    tbody.innerHTML = '';
+    neighbors.slice(0, 8).forEach((n, i) => {
+      const tr = document.createElement('tr');
+      if (i < K) tr.className = 'knn-row';
+      tr.innerHTML = `<td>${i+1}</td><td>(${n.x.toFixed(1)}, ${n.y.toFixed(1)})</td><td>${CLASS_NAME[n.c]}</td><td>${n.d.toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  if (step >= 3) {
+    // step 3: majority vote
+    const counts = {fruit:0, veg:0, protein:0};
+    topK.forEach(n => counts[n.c]++);
+    const pred = Object.keys(counts).reduce((a,b) => counts[a] >= counts[b] ? a : b);
+
+    document.getElementById('resultBox').classList.add('show');
+    document.getElementById('predText').textContent = CLASS_NAME[pred] + ` (${counts[pred]}/${K} เสียง)`;
+    document.getElementById('predText').style.color = CLASS_COLOR[pred];
+
+    const voteBars = document.getElementById('voteBars');
+    voteBars.innerHTML = '';
+    Object.keys(counts).forEach(cls => {
+      const pct = (counts[cls]/K*100).toFixed(0);
+      voteBars.innerHTML += `<div class="vote-bar">
+        <div class="bar"><div class="fill" style="width:${pct}%;background:${CLASS_COLOR[cls]}"></div></div>
+        ${CLASS_NAME[cls]}: ${counts[cls]}
+      </div>`;
+    });
+
+    // color query point with predicted class outline
+    dynamicLayer.appendChild(el('circle', {cx:xScale(query.x), cy:yScale(query.y), r:13, fill:'none', stroke:CLASS_COLOR[pred], 'stroke-width':3}));
+  }
+}
+
+const STEP_TEXT = [
+  `<b>ขั้นที่ 1: วางจุดข้อมูลใหม่ (Query Point)</b><br>คลิกบนกราฟด้านซ้ายเพื่อวางจุดข้อมูลที่ยังไม่ทราบประเภท (แสดงเป็นจุดสีส้ม) ระบบจะเริ่มคำนวณระยะห่างจากจุดนี้ไปยังข้อมูลทุกจุดที่มีอยู่แล้ว`,
+  `<b>ขั้นที่ 2: คำนวณระยะห่าง (Distance)</b><br>คำนวณระยะห่างแบบ Euclidean Distance จากจุด Query ไปยังทุกจุดข้อมูล ด้วยสูตร d = √((x₁-x₂)² + (y₁-y₂)²) เส้นประแสดงระยะห่างไปยังทุกจุด`,
+  `<b>ขั้นที่ 3: เลือก K จุดที่ใกล้ที่สุด</b><br>เรียงลำดับระยะห่างจากน้อยไปมาก แล้วเลือก K จุดที่ใกล้ Query มากที่สุด (วงกลมประแสดงขอบเขตของ K จุดที่ใกล้สุด) ดูตารางด้านล่างประกอบ`,
+  `<b>ขั้นที่ 4: โหวตเสียงข้างมาก (Majority Vote)</b><br>นับจำนวนประเภทของ K จุดที่ใกล้ที่สุด ประเภทที่มีคะแนนโหวตมากที่สุดคือคำตอบการทำนาย (Prediction) ของจุด Query นี้`,
+];
+
+function updateStepUI() {
+  document.getElementById('stepDesc').innerHTML = STEP_TEXT[step];
+  for (let i=0;i<4;i++) document.getElementById('seg'+i).classList.toggle('active', i<=step);
+  document.getElementById('prevBtn').disabled = step === 0;
+  document.getElementById('nextBtn').disabled = step === 3 || !query;
+  document.getElementById('nextBtn').textContent = step === 3 ? 'เสร็จสิ้น ✓' : 'ขั้นถัดไป →';
+}
+
+svg.addEventListener('click', (e) => {
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 635/rect.width, scaleY = 470/rect.height;
+  const px = (e.clientX - rect.left)*scaleX, py = (e.clientY - rect.top)*scaleY;
+  if (px < marginLeft || px > marginLeft+plotW || py < marginTop || py > marginTop+plotH) return;
+  const x = ((px-marginLeft)/plotW)*10;
+  const y = 10 - ((py-marginTop)/plotH)*10;
+  query = {x, y};
+  step = 0;
+  updateStepUI();
   render();
 });
 
-document.getElementById('resetBtn').addEventListener('click', function(){
-  centroids=[]; assignments=new Array(dataset.length).fill(-1);
-  phase='idle'; iteration=0; converged=false;
+document.getElementById('kSlider').addEventListener('input', (e) => {
+  K = parseInt(e.target.value);
   render();
 });
 
-// initial state: just points, no clusters
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (step < 3) { step++; updateStepUI(); render(); }
+});
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (step > 0) { step--; updateStepUI(); render(); }
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  query = null; step = 0; updateStepUI(); render();
+});
+document.getElementById('randomBtn').addEventListener('click', () => {
+  query = {x: Math.random()*10, y: Math.random()*10};
+  step = 0; updateStepUI(); render();
+});
+
+// initial demo state
+query = {x: 5.0, y: 5.0};
+step = 0;
+updateStepUI();
 render();
 </script>
 </body>
