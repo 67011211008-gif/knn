@@ -44,16 +44,16 @@
   .converged-box.show { display:block; }
 
   /* Theory Panel Styling */
-  .theory-panel { margin-top:22px; }
-  .theory-title { font-size:18px; font-weight:700; color:var(--navy); margin:0 0 14px 0; display:flex; align-items:center; gap:8px; }
-  .theory-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
-  .theory-card { background:#F8FAFC; border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
-  .theory-card h3 { font-size:14px; color:var(--deepblue); margin:0 0 8px 0; font-weight:700; }
-  .theory-card p, .theory-card ul { font-size:13px; color:var(--text); line-height:1.55; margin:0; padding-left:0; }
-  .theory-card ul { list-style-type:none; }
-  .theory-card li { margin-bottom:6px; position:relative; padding-left:16px; }
-  .theory-card li::before { content:"•"; color:var(--teal); font-weight:bold; position:absolute; left:0; }
-  .formula-box { background:#FFFFFF; border-left:3px solid var(--teal); padding:8px 12px; border-radius:4px; font-family:'Courier New', monospace; font-size:12.5px; color:var(--navy); margin:8px 0; }
+  .theory-panel { margin-top: 22px; }
+  .theory-title { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px; }
+  .theory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .theory-card { background: #F8FAFC; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .theory-card h3 { font-size: 14px; color: var(--deepblue); margin: 0 0 8px 0; font-weight: 700; }
+  .theory-card p, .theory-card ul { font-size: 13px; color: var(--text); line-height: 1.55; margin: 0; padding-left: 0; }
+  .theory-card ul { list-style-type: none; }
+  .theory-card li { margin-bottom: 6px; position: relative; padding-left: 16px; }
+  .theory-card li::before { content: "•"; color: var(--teal); font-weight: bold; position: absolute; left: 0; }
+  .formula-box { background: #FFFFFF; border-left: 3px solid var(--teal); padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12.5px; color: var(--navy); margin: 8px 0; }
 </style>
 </head>
 <body>
@@ -103,28 +103,28 @@
     
     <div class="theory-card">
       <h3>1. แนวคิดพื้นฐาน (Core Concept)</h3>
-      <p>K-Means เป็นอัลกอริทึมประเภท <b>Unsupervised Learning</b> ที่ใช้แบ่งกลุ่มข้อมูลออกเป็น <b>K กลุ่ม</b> โดยอิงจากระยะห่าง เป้าหมายคือทำให้จุดข้อมูลภายในกลุ่มเดียวกันอยู่ใกล้กันมากที่สุด (Maximize intra-cluster similarity)</p>
+      <p>K-Means จัดเป็น <b>Unsupervised Learning</b> ที่ใช้จัดกลุ่มข้อมูลที่ไม่มีลาเบล (Unlabeled Data) ออกเป็น K กลุ่ม โดยอาศัยหลักการทำให้ข้อมูลในกลุ่มเดียวกันอยู่ใกล้จุดศูนย์กลาง (Centroid) มากที่สุด</p>
     </div>
 
     <div class="theory-card">
-      <h3>2. การคำนวณระยะห่าง (Assignment Step)</h3>
-      <p>ใช้ <b>Euclidean Distance</b> ในการหาระยะห่างระหว่างจุดข้อมูล (x, y) กับจุด Centroid (c<sub>x</sub>, c<sub>y</sub>):</p>
-      <div class="formula-box">d(P, C) = √[(x - c<sub>x</sub>)<sup>2</sup> + (y - c<sub>y</sub>)<sup>2</sup>]</div>
-      <p>จุดข้อมูลจะถูกจัดเข้ากลุ่มของ Centroid ที่มีค่า d สั้นที่สุด</p>
+      <h3>2. ฟังก์ชันวัตถุประสงค์ (Objective Function)</h3>
+      <p>เป้าหมายคือการย่อค่า <b>WCSS (Within-Cluster Sum of Squares)</b> หรือความต่างภายในกลุ่มให้มีค่าน้อยที่สุด:</p>
+      <div class="formula-box">J = ∑<sub>j=1</sub><sup>K</sup> ∑<sub>i ∈ S<sub>j</sub></sub> ||x<sub>i</sub> - μ<sub>j</sub>||<sup>2</sup></div>
+      <p>โดยที่ μ<sub>j</sub> คือตำแหน่ง Centroid ของกลุ่ม j และ S<sub>j</sub> คือเซตของจุดข้อมูลสมาชิกในกลุ่มนั้น</p>
     </div>
 
     <div class="theory-card">
-      <h3>3. การปรับตำแหน่งศูนย์กลาง (Update Step)</h3>
-      <p>คำนวณตำแหน่ง Centroid ใหม่ โดยใช้ค่าเฉลี่ย (Mean) ของพิกัดข้อมูลทั้งหมดที่อยู่ในกลุ่มนั้น:</p>
-      <div class="formula-box">C<sub>k</sub> = ( 1/N<sub>k</sub> ∑ x<sub>i</sub> , 1/N<sub>k</sub> ∑ y<sub>i</sub> )</div>
-      <p>เมื่อ N<sub>k</sub> คือจำนวนจุดข้อมูลทั้งหมดในกลุ่ม k</p>
+      <h3>3. กระบวนการวนซ้ำ (2-Step Iteration)</h3>
+      <ul>
+        <li><b>1. Assignment Step:</b> จัดจุด x<sub>i</sub> เข้ากลุ่มที่มี Centroid μ<sub>j</sub> ใกล้ที่สุด: <br><span style="font-family:monospace;font-size:11.5px;">c<sup>(i)</sup> = argmin<sub>j</sub> ||x<sub>i</sub> - μ<sub>j</sub>||<sup>2</sup></span></li>
+        <li><b>2. Update Step:</b> คำนวณตำแหน่ง Centroid ใหม่จากค่าเฉลี่ยของสมาชิก: <br><span style="font-family:monospace;font-size:11.5px;">μ<sub>j</sub> = (1 / |S<sub>j</sub>|) ∑<sub>i ∈ S<sub>j</sub></sub> x<sub>i</sub></span></li>
+      </ul>
     </div>
 
     <div class="theory-card">
-      <h3>4. เป้าหมายทางคณิตศาสตร์ (Objective Function)</h3>
-      <p>อัลกอริทึมพยายามลดค่า <b>WCSS (Within-Cluster Sum of Squares)</b> ให้ได้มากที่สุด:</p>
-      <div class="formula-box">J = ∑<sub>k=1..K</sub> ∑<sub>x ∈ S<sub>k</sub></sub> ||x - c<sub>k</sub>||<sup>2</sup></div>
-      <p>จะหยุดทำงาน (Converged) เมื่อตำแหน่ง Centroid ไม่เปลี่ยนแปลงอีกต่อไป</p>
+      <h3>4. ข้อพิจารณาและการเลือกค่า K (Considerations)</h3>
+      <p><b>• การเลือก K:</b> นิยมใช้ <i>Elbow Method</i> (พิจารณาจุดที่ WCSS ลดลงช้าลงอย่างเห็นได้ชัด) หรือ Silhouette Analysis</p>
+      <p><b>• ข้อจำกัด:</b> ผลลัพธ์ขึ้นอยู่กับตำแหน่ง Centroid เริ่มต้น (แก้ปัญหาด้วย K-Means++) และเหมาะกับกลุ่มข้อมูลที่มีรูปทรงกลม (Spherical Clusters) เท่านั้น</p>
     </div>
 
   </div>
